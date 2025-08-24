@@ -37,58 +37,57 @@ except FileNotFoundError:
 
 
 # --- Sidebar de Filtros ---
-st.sidebar.header("Filtros Interactivos  фильтры")
+st.sidebar.header("Filtros Interactivos")
 
-clubs = st.sidebar.multiselect("Club", options=df['Club'].unique(), default=df['Club'].unique())
-nationalities = st.sidebar.multiselect("Nacionalidad Principal", options=df['Primary Nationality'].unique(), default=df['Primary Nationality'].unique())
-positions = st.sidebar.multiselect("Posición", options=df['Position'].unique(), default=df['Position'].unique())
+clubs = st.sidebar.multiselect("Club", options=sorted(df['Club'].unique()))
+nationalities = st.sidebar.multiselect("Nacionalidad Principal", options=sorted(df['Primary Nationality'].unique()))
+positions = st.sidebar.multiselect("Posición", options=sorted(df['Position'].unique()))
 
 min_age, max_age = int(df['Age'].min()), int(df['Age'].max())
 age_range = st.sidebar.slider("Rango de Edad", min_age, max_age, (min_age, max_age))
 
-min_value, max_value = int(df['Market Value'].min()), int(df['Market Value'].max())
-value_range = st.sidebar.slider("Rango de Valor de Mercado (EUR)", min_value, max_value, (min_value, max_value))
-
-# Aplicar filtros al DataFrame
-df_filtered = df[
-    (df['Club'].isin(clubs)) &
-    (df['Primary Nationality'].isin(nationalities)) &
-    (df['Position'].isin(positions)) &
-    (df['Age'].between(age_range[0], age_range[1])) &
-    (df['Market Value'].between(value_range[0], value_range[1]))
+# Usar listas de Python para evitar errores de tipo de numpy
+df_filtered_pre = df[
+    (df['Age'].between(age_range[0], age_range[1]))
 ]
+if clubs:
+    df_filtered_pre = df_filtered_pre[df_filtered_pre['Club'].isin(clubs)]
+if nationalities:
+    df_filtered_pre = df_filtered_pre[df_filtered_pre['Primary Nationality'].isin(nationalities)]
+if positions:
+    df_filtered_pre = df_filtered_pre[df_filtered_pre['Position'].isin(positions)]
 
 # --- Cuerpo Principal de la App ---
 st.title("📊 Dashboard Interactivo de Scouting")
-st.markdown(f"Mostrando **{len(df_filtered)}** de **{len(df)}** jugadores según los filtros seleccionados.")
+st.markdown(f"Mostrando **{len(df_filtered_pre)}** de **{len(df)}** jugadores según los filtros seleccionados.")
 
 # --- Pestañas para organizar el contenido ---
 tab1, tab2, tab3, tab4 = st.tabs(["Visión General", "Análisis de Rendimiento", "Análisis Financiero", "🤖 Agente IA"])
 
 with tab1:
     st.header("Visión General de los Datos Seleccionados")
-    st.dataframe(df_filtered)
+    st.dataframe(df_filtered_pre)
     st.header("Correlación de Métricas")
-    st.pyplot(plot_correlation_heatmap(df_filtered))
+    st.pyplot(plot_correlation_heatmap(df_filtered_pre))
 
 with tab2:
     st.header("Análisis de Rendimiento")
     col1, col2 = st.columns(2)
     with col1:
-        st.pyplot(plot_top_players(df_filtered, 'Goals', 'Top 10 Goleadores'))
+        st.pyplot(plot_top_players(df_filtered_pre, 'Goals', 'Top 10 Goleadores'))
     with col2:
-        st.pyplot(plot_top_players(df_filtered, 'Assists', 'Top 10 Asistidores'))
-    st.pyplot(plot_top_players(df_filtered, 'Performance', 'Top 10 por Rendimiento Total'))
+        st.pyplot(plot_top_players(df_filtered_pre, 'Assists', 'Top 10 Asistidores'))
+    st.pyplot(plot_top_players(df_filtered_pre, 'Performance', 'Top 10 por Rendimiento Total'))
 
 with tab3:
     st.header("Análisis Financiero y de Eficiencia")
     col1, col2 = st.columns(2)
     with col1:
-        st.pyplot(plot_value_distribution(df_filtered))
+        st.pyplot(plot_value_distribution(df_filtered_pre))
     with col2:
-        st.pyplot(plot_top_players(df_filtered, 'Market Value', 'Top 10 Jugadores más Valiosos'))
+        st.pyplot(plot_top_players(df_filtered_pre, 'Market Value', 'Top 10 Jugadores más Valiosos'))
     st.header("Análisis de Eficiencia (Moneyball)")
-    st.pyplot(plot_efficiency_scatter(df_filtered))
+    st.pyplot(plot_efficiency_scatter(df_filtered_pre))
 
 with tab4:
     st.header("Asistente de Scouting con IA")
@@ -99,8 +98,7 @@ with tab4:
     if not api_key_input:
         st.warning("Se necesita una API Key de Groq para usar el agente.")
     else:
-        # Generar resumen dinámico
-        summary = get_dynamic_eda_summary(df_filtered)
+        summary = get_dynamic_eda_summary(df_filtered_pre)
         st.markdown("#### Resumen para el Agente:")
         with st.expander("Ver el resumen que recibirá la IA"):
             st.text(summary)
