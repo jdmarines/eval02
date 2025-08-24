@@ -37,6 +37,7 @@ if uploaded_file is not None:
         st.success("Archivo CSV cargado exitosamente!")
         st.write("### Vista Previa de los Datos:")
         st.dataframe(df.head())
+        st.write("Nombres de las columnas en tu archivo:", df.columns.tolist())
 
         # --- Sección de Análisis Exploratorio de Datos (EDA) ---
         st.markdown("---")
