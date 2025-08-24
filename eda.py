@@ -11,7 +11,7 @@ def get_eda_summary(df):
     null_values = df.isnull().sum().sum()
     summary += f"Se encontraron {null_values} valores nulos en total.\n"
     avg_age = df['Age'].mean()
-    avg_value = df['Value_eur'].mean()
+    avg_value = df['Market Value'].mean()
     summary += f"La edad promedio de los jugadores es {avg_age:.1f} años.\n"
     summary += f"El valor de mercado promedio es {avg_value:,.0f} euros.\n"
     
@@ -50,7 +50,7 @@ def plot_moneyball_analysis(df):
              df['Performance'] = df['Goals'] + df['Assists']
              
         fig, ax = plt.subplots(figsize=(12, 8))
-        sns.scatterplot(data=df, x='Performance', y='Value_eur', hue='Position', size='Age', sizes=(50, 500), alpha=0.7, ax=ax)
+        sns.scatterplot(data=df, x='Performance', y='Market Value', hue='Position', size='Age', sizes=(50, 500), alpha=0.7, ax=ax)
         ax.set_title('Análisis Moneyball: Valor de Mercado vs. Rendimiento (Goles + Asistencias)')
         ax.set_xlabel('Rendimiento (Goles + Asistencias)')
         ax.set_ylabel('Valor de Mercado (en Euros)')
