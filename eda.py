@@ -19,7 +19,7 @@ def get_eda_summary(df):
         df['Performance'] = df['Goals'] + df['Assists']
         # Evitar division por cero si Performance es 0
         df['Value_per_Performance'] = df.apply(
-            lambda row: row['Value_eur'] / row['Performance'] if row['Performance'] > 0 else 0,
+            lambda row: row['Market Value'] / row['Performance'] if row['Performance'] > 0 else 0,
             axis=1
         )
         
