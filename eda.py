@@ -1,7 +1,3 @@
-### 🐍 `eda.py`
-Este módulo contiene toda la lógica para el análisis de datos. Mantiene tu `app.py` más limpio.
-
-```python
 # eda.py
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -21,11 +17,16 @@ def get_eda_summary(df):
     
     if 'Goals' in df.columns and 'Assists' in df.columns:
         df['Performance'] = df['Goals'] + df['Assists']
-        df['Value_per_Performance'] = df['Value_eur'] / df['Performance']
-        df['Value_per_Performance'] = df['Value_per_Performance'].replace([np.inf, -np.inf], np.nan).fillna(0)
+        # Evitar division por cero si Performance es 0
+        df['Value_per_Performance'] = df.apply(
+            lambda row: row['Value_eur'] / row['Performance'] if row['Performance'] > 0 else 0,
+            axis=1
+        )
         
-        if not df[df['Performance'] > 0].empty:
-            undervalued_player = df.loc[df[df['Performance'] > 0]['Value_per_Performance'].idxmin()]
+        # Filtrar jugadores con rendimiento para encontrar el más infravalorado
+        performers = df[df['Performance'] > 0]
+        if not performers.empty:
+            undervalued_player = performers.loc[performers['Value_per_Performance'].idxmin()]
             summary += f"El jugador potencialmente más infravalorado (menor costo por contribución a gol) es {undervalued_player['Player']} "
             summary += f"con un costo de {undervalued_player['Value_per_Performance']:,.0f} euros por gol o asistencia.\n"
     
@@ -44,7 +45,10 @@ def plot_age_distribution(df):
 def plot_moneyball_analysis(df):
     """Crea un gráfico de dispersión para el análisis Moneyball."""
     if 'Goals' in df.columns and 'Assists' in df.columns:
-        df['Performance'] = df['Goals'] + df['Assists']
+        # Asegurarse de que la columna Performance existe
+        if 'Performance' not in df.columns:
+             df['Performance'] = df['Goals'] + df['Assists']
+             
         fig, ax = plt.subplots(figsize=(12, 8))
         sns.scatterplot(data=df, x='Performance', y='Value_eur', hue='Position', size='Age', sizes=(50, 500), alpha=0.7, ax=ax)
         ax.set_title('Análisis Moneyball: Valor de Mercado vs. Rendimiento (Goles + Asistencias)')
