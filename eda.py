@@ -59,3 +59,38 @@ def plot_moneyball_analysis(df):
         ax.legend(title='Posición', bbox_to_anchor=(1.05, 1), loc='upper left')
         return fig
     return None
+
+def get_eda_summary(df):
+    """Genera un resumen textual ENRIQUECIDO del EDA para alimentar al LLM."""
+    summary = "Resumen del Análisis Exploratorio de Datos (EDA):\n\n"
+    summary += f"El dataset contiene {df.shape[0]} jugadores.\n"
+    summary += f"La edad promedio es {df['Age'].mean():.1f} años y el valor de mercado promedio es {df['Market Value'].mean():,.0f} euros.\n"
+    
+    # --- ENRIQUECIMIENTO DEL CONTEXTO ---
+    if 'Goals' in df.columns and 'Assists' in df.columns:
+        df['Performance'] = df['Goals'] + df['Assists']
+        
+        # 1. Añadir Top 3 Jugadores por Rendimiento
+        top_performers = df.sort_values(by='Performance', ascending=False).head(3)
+        summary += "\n**Top 3 Jugadores por Rendimiento (Goles + Asistencias):**\n"
+        for index, row in top_performers.iterrows():
+            summary += f"- {row['Name']} (Rendimiento: {row['Performance']})\n"
+            
+        # 2. Añadir Top 3 Jugadores más Valiosos
+        top_valuable = df.sort_values(by='Market Value', ascending=False).head(3)
+        summary += "\n**Top 3 Jugadores más Valiosos:**\n"
+        for index, row in top_valuable.iterrows():
+            summary += f"- {row['Name']} (Valor: {row['Market Value']:,.0f} EUR)\n"
+
+        # 3. Añadir el Jugador más Infravalorado (Moneyball)
+        df['Value_per_Performance'] = df.apply(
+            lambda row: row['Market Value'] / row['Performance'] if row['Performance'] > 0 else 0,
+            axis=1
+        )
+        performers = df[df['Performance'] > 0]
+        if not performers.empty:
+            undervalued_Name = performers.loc[performers['Value_per_Performance'].idxmin()]
+            summary += "\n**Hallazgo Principal (Moneyball):**\n"
+            summary += f"- El jugador potencialmente más infravalorado es {undervalued_Name['Name']}.\n"
+    
+    return summary
