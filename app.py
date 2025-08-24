@@ -5,80 +5,112 @@ import os
 from dotenv import load_dotenv
 
 # Importar funciones de nuestros módulos
-from eda import get_eda_summary, plot_age_distribution, plot_moneyball_analysis
+from eda import (
+    create_features, 
+    plot_correlation_heatmap, 
+    plot_value_distribution, 
+    plot_top_players, 
+    plot_efficiency_scatter,
+    get_dynamic_eda_summary
+)
 from agent import get_agent_response
 
-# Cargar la API key desde el archivo .env
+# --- Configuración de la Página y Carga de Datos ---
+st.set_page_config(layout="wide", page_title="Dashboard de Scouting")
+
+@st.cache_data
+def load_data(filepath):
+    df = pd.read_csv(filepath)
+    df_featured = create_features(df)
+    return df_featured
+
+# Cargar API key
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# --- Configuración de la Página ---
-st.set_page_config(layout="wide", page_title="Panel Moneyball")
-st.title("📊 Panel de Análisis 'Moneyball' para Fichajes")
+# Cargar el dataset
+try:
+    df = load_data('Top 500 Players 2024.csv')
+except FileNotFoundError:
+    st.error("Error: El archivo 'Top 500 Players 2024.csv' no se encontró. Asegúrate de que esté en la misma carpeta que app.py.")
+    st.stop()
 
-# --- Sidebar ---
-st.sidebar.header("Configuración")
-api_key_input = st.sidebar.text_input(
-    "Introduce tu API Key de Groq", 
-    type="password", 
-    value=GROQ_API_KEY or "",
-    help="Puedes obtener tu clave en https://console.groq.com/keys"
-)
 
-st.sidebar.markdown("---")
-st.sidebar.info("Esta aplicación te permite analizar datos de jugadores y obtener recomendaciones de una IA.")
+# --- Sidebar de Filtros ---
+st.sidebar.header("Filtros Interactivos  фильтры")
 
-# --- Lógica Principal de la Aplicación ---
-uploaded_file = st.file_uploader("Sube tu archivo CSV con estadísticas de jugadores", type="csv")
+clubs = st.sidebar.multiselect("Club", options=df['Club'].unique(), default=df['Club'].unique())
+nationalities = st.sidebar.multiselect("Nacionalidad Principal", options=df['Primary Nationality'].unique(), default=df['Primary Nationality'].unique())
+positions = st.sidebar.multiselect("Posición", options=df['Position'].unique(), default=df['Position'].unique())
 
-if uploaded_file is not None:
-    try:
-        df = pd.read_csv(uploaded_file)
-        st.success("Archivo CSV cargado exitosamente!")
-        st.write("### Vista Previa de los Datos:")
-        st.dataframe(df.head())
-        st.write("Nombres de las columnas en tu archivo:", df.columns.tolist())
+min_age, max_age = int(df['Age'].min()), int(df['Age'].max())
+age_range = st.sidebar.slider("Rango de Edad", min_age, max_age, (min_age, max_age))
 
-        # --- Sección de Análisis Exploratorio de Datos (EDA) ---
-        st.markdown("---")
-        st.header("🔎 Análisis Exploratorio de Datos (EDA)")
+min_value, max_value = int(df['Market Value'].min()), int(df['Market Value'].max())
+value_range = st.sidebar.slider("Rango de Valor de Mercado (EUR)", min_value, max_value, (min_value, max_value))
+
+# Aplicar filtros al DataFrame
+df_filtered = df[
+    (df['Club'].isin(clubs)) &
+    (df['Primary Nationality'].isin(nationalities)) &
+    (df['Position'].isin(positions)) &
+    (df['Age'].between(age_range[0], age_range[1])) &
+    (df['Market Value'].between(value_range[0], value_range[1]))
+]
+
+# --- Cuerpo Principal de la App ---
+st.title("📊 Dashboard Interactivo de Scouting")
+st.markdown(f"Mostrando **{len(df_filtered)}** de **{len(df)}** jugadores según los filtros seleccionados.")
+
+# --- Pestañas para organizar el contenido ---
+tab1, tab2, tab3, tab4 = st.tabs(["Visión General", "Análisis de Rendimiento", "Análisis Financiero", "🤖 Agente IA"])
+
+with tab1:
+    st.header("Visión General de los Datos Seleccionados")
+    st.dataframe(df_filtered)
+    st.header("Correlación de Métricas")
+    st.pyplot(plot_correlation_heatmap(df_filtered))
+
+with tab2:
+    st.header("Análisis de Rendimiento")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.pyplot(plot_top_players(df_filtered, 'Goals', 'Top 10 Goleadores'))
+    with col2:
+        st.pyplot(plot_top_players(df_filtered, 'Assists', 'Top 10 Asistidores'))
+    st.pyplot(plot_top_players(df_filtered, 'Performance', 'Top 10 por Rendimiento Total'))
+
+with tab3:
+    st.header("Análisis Financiero y de Eficiencia")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.pyplot(plot_value_distribution(df_filtered))
+    with col2:
+        st.pyplot(plot_top_players(df_filtered, 'Market Value', 'Top 10 Jugadores más Valiosos'))
+    st.header("Análisis de Eficiencia (Moneyball)")
+    st.pyplot(plot_efficiency_scatter(df_filtered))
+
+with tab4:
+    st.header("Asistente de Scouting con IA")
+    st.info("El agente analizará el conjunto de datos **filtrado actualmente** para darte recomendaciones específicas.")
+    
+    api_key_input = st.text_input("Introduce tu API Key de Groq", type="password", value=GROQ_API_KEY or "")
+    
+    if not api_key_input:
+        st.warning("Se necesita una API Key de Groq para usar el agente.")
+    else:
+        # Generar resumen dinámico
+        summary = get_dynamic_eda_summary(df_filtered)
+        st.markdown("#### Resumen para el Agente:")
+        with st.expander("Ver el resumen que recibirá la IA"):
+            st.text(summary)
+
+        user_question = st.text_area("Haz una pregunta específica sobre los jugadores seleccionados:", height=100)
         
-        eda_summary = get_eda_summary(df)
-        st.write("#### Resumen del Análisis:")
-        st.text(eda_summary)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write("#### Distribución de Edades")
-            fig_age = plot_age_distribution(df)
-            st.pyplot(fig_age)
-        
-        with col2:
-            st.write("#### Gráfico de Análisis 'Moneyball'")
-            fig_moneyball = plot_moneyball_analysis(df)
-            if fig_moneyball:
-                st.pyplot(fig_moneyball)
+        if st.button("Consultar al Agente"):
+            if user_question:
+                with st.spinner("El Director Deportivo está analizando los datos..."):
+                    response = get_agent_response(api_key_input, summary, user_question)
+                    st.success(response)
             else:
-                st.warning("El archivo CSV debe contener las columnas 'Goals' y 'Assists' para el gráfico Moneyball.")
-
-        # --- Sección del Agente Inteligente ---
-        st.markdown("---")
-        st.header("🤖 Asistente de Fichajes (IA)")
-
-        if not api_key_input:
-            st.warning("Por favor, introduce tu API Key de Groq en la barra lateral para activar el asistente.")
-        else:
-            user_question = st.text_area("Haz una pregunta sobre los datos analizados:", height=100)
-            
-            if st.button("Obtener Recomendación"):
-                if user_question:
-                    with st.spinner("El asistente está pensando..."):
-                        response = get_agent_response(api_key_input, eda_summary, user_question)
-                        st.info(response)
-                else:
-                    st.warning("Por favor, escribe una pregunta.")
-                    
-    except Exception as e:
-        st.error(f"Ocurrió un error al procesar el archivo: {e}")
-else:
-    st.info("Esperando que subas un archivo CSV para comenzar el análisis.")
+                st.warning("Por favor, introduce una pregunta.")
