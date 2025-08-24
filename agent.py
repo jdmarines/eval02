@@ -1,6 +1,7 @@
 # agent.py
-
-# ... (resto de las importaciones)
+from langchain_groq import ChatGroq
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 
 def get_agent_response(api_key, eda_summary, question):
     """
