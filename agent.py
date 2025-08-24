@@ -8,7 +8,7 @@ def get_agent_response(api_key, eda_summary, question):
     Obtiene una respuesta del agente LLM basada en el resumen del EDA y la pregunta del usuario.
     """
     try:
-        llm = ChatGroq(temperature=0, groq_api_key=api_key, model_name="llama3-8b-8192")
+        llm = ChatGroq(temperature=0, groq_api_key=api_key, model_name="llama3-70b-8192")
         
         # --- PROMPT MEJORADO ---
         prompt_template = """
