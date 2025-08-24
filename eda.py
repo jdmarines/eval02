@@ -26,9 +26,9 @@ def get_eda_summary(df):
         # Filtrar jugadores con rendimiento para encontrar el más infravalorado
         performers = df[df['Performance'] > 0]
         if not performers.empty:
-            undervalued_player = performers.loc[performers['Value_per_Performance'].idxmin()]
-            summary += f"El jugador potencialmente más infravalorado (menor costo por contribución a gol) es {undervalued_player['Player']} "
-            summary += f"con un costo de {undervalued_player['Value_per_Performance']:,.0f} euros por gol o asistencia.\n"
+            undervalued_Name = performers.loc[performers['Value_per_Performance'].idxmin()]
+            summary += f"El jugador potencialmente más infravalorado (menor costo por contribución a gol) es {undervalued_Name['Name']} "
+            summary += f"con un costo de {undervalued_Name['Value_per_Performance']:,.0f} euros por gol o asistencia.\n"
     
     return summary
 
