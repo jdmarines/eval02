@@ -1,8 +1,3 @@
----
-### 🐍 `eda.py`
-Este es el nuevo motor de análisis, mucho más completo y riguroso.
-
-```python
 # eda.py
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -85,19 +80,16 @@ def get_dynamic_eda_summary(df):
 
     summary = f"Resumen del análisis para los {df.shape[0]} jugadores seleccionados:\n\n"
     
-    # Estadísticas Generales
     summary += f"**Visión General:**\n"
     summary += f"- Edad promedio: {df['Age'].mean():.1f} años.\n"
     summary += f"- Valor de mercado promedio: {df['Market Value'].mean():,.0f} EUR.\n"
     summary += f"- Club más representado: {df['Club'].mode().iloc[0]}.\n"
     
-    # Hallazgos de Rendimiento
     df_perf = df.nlargest(5, 'Performance')
     summary += "\n**Top 5 Jugadores por Rendimiento (Goles + Asistencias):**\n"
     for _, row in df_perf.iterrows():
         summary += f"- {row['Name']} ({row['Club']}): {row['Performance']} contribuciones.\n"
         
-    # Hallazgos de Eficiencia (Moneyball)
     performers = df[df['Cost_per_Performance'] > 0]
     if not performers.empty:
         best_value_players = performers.nsmallest(5, 'Cost_per_Performance')
@@ -106,45 +98,3 @@ def get_dynamic_eda_summary(df):
             summary += f"- {row['Name']} ({row['Club']}): {row['Cost_per_Performance']:,.0f} EUR por contribución.\n"
             
     return summary
-🤖 agent.py
-Actualizado para usar el modelo recomendado, Llama 3 70b.
-
-Python
-
-# agent.py
-from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-
-def get_agent_response(api_key, eda_summary, question):
-    """
-    Obtiene una respuesta del agente LLM (Llama 3 70b) basada en el resumen del EDA.
-    """
-    try:
-        # Usamos el modelo recomendado para máxima calidad
-        llm = ChatGroq(temperature=0, groq_api_key=api_key, model_name="llama3-70b-8192")
-        
-        prompt_template = """
-        Eres un director deportivo experto en fútbol y análisis de datos. Tu única fuente de verdad es el siguiente "Resumen de Datos".
-        Debes responder la "Pregunta del Usuario" de forma profesional y detallada, basándote exclusivamente en la información del resumen.
-        No uses conocimiento externo. Si la pregunta no se puede responder, indica que la información no está disponible en el análisis actual.
-        Estructura tu respuesta de forma clara y, si es posible, usa listas para comparar jugadores.
-
-        ---
-        **Resumen de Datos:**
-        {eda_summary}
-        ---
-        **Pregunta del Usuario:**
-        {question}
-        ---
-        **Respuesta del Director Deportivo:**
-        """
-        
-        prompt = ChatPromptTemplate.from_template(prompt_template)
-        chain = prompt | llm | StrOutputParser()
-        
-        response = chain.invoke({"eda_summary": eda_summary, "question": question})
-        return response
-    
-    except Exception as e:
-        return f"Ocurrió un error al contactar al modelo de lenguaje: {e}"
