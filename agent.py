@@ -1,7 +1,6 @@
 # agent.py
-from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
+
+# ... (resto de las importaciones)
 
 def get_agent_response(api_key, eda_summary, question):
     """
@@ -10,18 +9,21 @@ def get_agent_response(api_key, eda_summary, question):
     try:
         llm = ChatGroq(temperature=0, groq_api_key=api_key, model_name="llama3-8b-8192")
         
+        # --- PROMPT MEJORADO ---
         prompt_template = """
-        Eres un asistente de IA experto en análisis de datos de fútbol, con un enfoque en economía y la filosofía "Moneyball".
-        Tu tarea es responder a las preguntas del usuario basándote únicamente en el siguiente resumen del análisis de datos (EDA).
-        Sé conciso, directo y profesional en tus respuestas.
+        Eres un analista de datos de fútbol profesional. Tu única fuente de verdad es el siguiente "Resumen de Datos".
+        Debes responder la "Pregunta del Usuario" basándote exclusivamente en la información contenida en el "Resumen de Datos".
+        No uses ningún conocimiento externo. Si la pregunta no se puede responder con el resumen, indica que no tienes suficiente información.
+        Si la respuesta incluye un jugador, menciona su nombre tal como aparece en el resumen.
 
-        Contexto (Resumen del EDA):
+        ---
+        **Resumen de Datos:**
         {eda_summary}
-
-        Pregunta del Usuario:
+        ---
+        **Pregunta del Usuario:**
         {question}
-
-        Respuesta:
+        ---
+        **Respuesta del Analista:**
         """
         
         prompt = ChatPromptTemplate.from_template(prompt_template)
