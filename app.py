@@ -86,50 +86,15 @@ if uploaded_file is not None:
 
     # 3. Pestañas principales del dashboard
     tab1, tab2, tab3, tab4 = st.tabs([
+        "🤖 Agente IA"
         "Visión General", 
         "Análisis de Rendimiento", 
         "Análisis Financiero", 
-        "🤖 Agente IA"
     ])
 
-    # --- TAB 1: Visión General ---
+    
+    # --- TAB 1: Agente IA ---
     with tab1:
-        st.header("Visión General de los Datos Seleccionados")
-        st.dataframe(df_filtered)  # Muestra la tabla de jugadores filtrados
-
-        st.header("Correlación de Métricas")
-        st.pyplot(plot_correlation_heatmap(df_filtered))
-
-
-    # --- TAB 2: Rendimiento ---
-    with tab2:
-        st.header("Análisis de Rendimiento")
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.pyplot(plot_top_players(df_filtered, 'Goals', 'Top 10 Goleadores'))
-        with col2:
-            st.pyplot(plot_top_players(df_filtered, 'Assists', 'Top 10 Asistidores'))
-
-        st.pyplot(plot_top_players(df_filtered, 'Performance', 'Top 10 por Rendimiento Total'))
-
-
-    # --- TAB 3: Finanzas y Eficiencia ---
-    with tab3:
-        st.header("Análisis Financiero y de Eficiencia")
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.pyplot(plot_value_distribution(df_filtered))
-        with col2:
-            st.pyplot(plot_top_players(df_filtered, 'Market Value', 'Top 10 Jugadores más Valiosos'))
-
-        st.header("Análisis de Eficiencia (Moneyball)")
-        st.pyplot(plot_efficiency_scatter(df_filtered))
-
-
-    # --- TAB 4: Agente IA ---
-    with tab4:
         st.header("Asistente de Scouting con IA")
         st.info("El agente analizará el conjunto de datos **filtrado actualmente** para darte recomendaciones específicas.")
         
@@ -160,6 +125,41 @@ if uploaded_file is not None:
                         st.success(response)
                 else:
                     st.warning("Por favor, introduce una pregunta.")
+    # --- TAB 2: Visión General ---
+    with tab2:
+        st.header("Visión General de los Datos Seleccionados")
+        st.dataframe(df_filtered)  # Muestra la tabla de jugadores filtrados
+
+        st.header("Correlación de Métricas")
+        st.pyplot(plot_correlation_heatmap(df_filtered))
+
+
+    # --- TAB 3: Rendimiento ---
+    with tab3:
+        st.header("Análisis de Rendimiento")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.pyplot(plot_top_players(df_filtered, 'Goals', 'Top 10 Goleadores'))
+        with col2:
+            st.pyplot(plot_top_players(df_filtered, 'Assists', 'Top 10 Asistidores'))
+
+        st.pyplot(plot_top_players(df_filtered, 'Performance', 'Top 10 por Rendimiento Total'))
+
+
+    # --- TAB 4: Finanzas y Eficiencia ---
+    with tab4:
+        st.header("Análisis Financiero y de Eficiencia")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.pyplot(plot_value_distribution(df_filtered))
+        with col2:
+            st.pyplot(plot_top_players(df_filtered, 'Market Value', 'Top 10 Jugadores más Valiosos'))
+
+        st.header("Análisis de Eficiencia (Moneyball)")
+        st.pyplot(plot_efficiency_scatter(df_filtered))
+
 
 
 # --- Caso inicial: no se ha cargado archivo ---
