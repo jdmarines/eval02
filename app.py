@@ -69,13 +69,7 @@ if uploaded_file is not None:
     st.markdown(f"Mostrando **{len(df_filtered)}** de **{len(df)}** jugadores según los filtros seleccionados.")
 
     # --- Pestañas del Dashboard ---
-    tab1, tab2, tab3, tab4 = st.tabs(["Visión General", "Análisis de Rendimiento", "Análisis Financiero", "🤖 Agente IA"])
-
-    with tab1:
-        st.header("Visión General de los Datos Seleccionados")
-        st.dataframe(df_filtered)
-        st.header("Correlación de Métricas")
-        st.pyplot(plot_correlation_heatmap(df_filtered))
+    tab1, tab2, tab3 = st.tabs(["🤖 Agente IA", "Análisis de Rendimiento", "Análisis Financiero"])
 
     with tab2:
         st.header("Análisis de Rendimiento")
@@ -96,7 +90,7 @@ if uploaded_file is not None:
         st.header("Análisis de Eficiencia (Moneyball)")
         st.pyplot(plot_efficiency_scatter(df_filtered))
 
-    with tab4:
+    with tab1:
         st.header("Asistente de Scouting con IA")
         st.info("El agente analizará el conjunto de datos **filtrado actualmente** para darte recomendaciones específicas.")
         
