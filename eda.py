@@ -3,16 +3,6 @@ import pandas as pd
 import os
 from dotenv import load_dotenv
 
-# Importar funciones de nuestros módulos
-from eda import (
-    create_features, 
-    plot_correlation_heatmap, 
-    plot_value_distribution, 
-    plot_top_players, 
-    plot_efficiency_scatter,
-    get_dynamic_eda_summary
-)
-from agent import get_agent_response
 
 # --- Configuración de la Página ---
 st.set_page_config(layout="wide", page_title="Dashboard de Scouting")
