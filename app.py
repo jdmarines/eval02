@@ -15,21 +15,20 @@ from eda import (
 )
 from agent import get_agent_response
 
-# --- Configuración de la Página ---
+# --- Configuración de la Página y Carga de Datos ---
 st.set_page_config(layout="wide", page_title="Dashboard de Scouting")
-st.title("📊 Dashboard Interactivo de Scouting")
 
-# Cargar API key
-load_dotenv()
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
-# --- Función de Carga de Datos Cacheada ---
-# Se ejecuta solo cuando el archivo subido cambia, optimizando el rendimiento.
 @st.cache_data
 def load_data(uploaded_file):
     df = pd.read_csv(uploaded_file)
     df_featured = create_features(df)
     return df_featured
+
+# Cargar API key
+load_dotenv()
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+st.title("📊 Dashboard Interactivo de Scouting")
 
 # --- Sección para Subir el Archivo ---
 uploaded_file = st.file_uploader(
@@ -38,21 +37,26 @@ uploaded_file = st.file_uploader(
 )
 
 # --- Lógica Principal de la Aplicación ---
-# Todo el dashboard se construye solo si un archivo ha sido subido.
 if uploaded_file is not None:
     df = load_data(uploaded_file)
 
-    # --- Sidebar de Filtros (se crea dinámicamente) ---
+    # --- Sidebar de Filtros ---
     st.sidebar.header("Filtros Interactivos")
+    
+    # Usar listas vacías como default para evitar errores si las opciones no existen
+    clubs_options = sorted(df['Club'].unique()) if 'Club' in df.columns else []
+    clubs = st.sidebar.multiselect("Club", options=clubs_options)
+    
+    nationalities_options = sorted(df['Primary Nationality'].unique()) if 'Primary Nationality' in df.columns else []
+    nationalities = st.sidebar.multiselect("Nacionalidad Principal", options=nationalities_options)
 
-    clubs = st.sidebar.multiselect("Club", options=sorted(df['Club'].unique()))
-    nationalities = st.sidebar.multiselect("Nacionalidad Principal", options=sorted(df['Primary Nationality'].unique()))
-    positions = st.sidebar.multiselect("Posición", options=sorted(df['Position'].unique()))
+    positions_options = sorted(df['Position'].unique()) if 'Position' in df.columns else []
+    positions = st.sidebar.multiselect("Posición", options=positions_options)
 
     min_age, max_age = int(df['Age'].min()), int(df['Age'].max())
     age_range = st.sidebar.slider("Rango de Edad", min_age, max_age, (min_age, max_age))
 
-    # Aplicar filtros al DataFrame
+    # Aplicar filtros
     df_filtered = df.copy()
     if clubs:
         df_filtered = df_filtered[df_filtered['Club'].isin(clubs)]
@@ -62,10 +66,9 @@ if uploaded_file is not None:
         df_filtered = df_filtered[df_filtered['Position'].isin(positions)]
     df_filtered = df_filtered[df_filtered['Age'].between(age_range[0], age_range[1])]
 
-
     st.markdown(f"Mostrando **{len(df_filtered)}** de **{len(df)}** jugadores según los filtros seleccionados.")
 
-    # --- Pestañas para organizar el contenido ---
+    # --- Pestañas del Dashboard ---
     tab1, tab2, tab3, tab4 = st.tabs(["Visión General", "Análisis de Rendimiento", "Análisis Financiero", "🤖 Agente IA"])
 
     with tab1:
@@ -116,6 +119,5 @@ if uploaded_file is not None:
                         st.success(response)
                 else:
                     st.warning("Por favor, introduce una pregunta.")
-
 else:
     st.info("Por favor, sube un archivo CSV para comenzar el análisis.")
