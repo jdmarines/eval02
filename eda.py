@@ -1,109 +1,133 @@
-import streamlit as st
+# eda.py
 import pandas as pd
-import os
-from dotenv import load_dotenv
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
 
+# --- Feature Engineering ---
+def create_features(df):
+    """Crea nuevas columnas para un análisis más profundo."""
+    df_copy = df.copy()
+    df_copy['Performance'] = df_copy['Goals'] + df_copy['Assists']
+    
+    # Calcular eficiencia (costo por contribución a gol)
+    df_copy['Cost_per_Performance'] = df_copy.apply(
+        lambda row: row['Market Value'] / row['Performance'] if row['Performance'] > 0 else 0,
+        axis=1
+    )
+    
+    # Categorías de edad
+    bins = [0, 21, 29, 40]
+    labels = ['Joven Promesa (<=21)', 'En su Prime (22-29)', 'Veterano (30+)']
+    df_copy['Age Group'] = pd.cut(df_copy['Age'], bins=bins, labels=labels, right=True)
+    
+    return df_copy
 
-# --- Configuración de la Página ---
-st.set_page_config(layout="wide", page_title="Dashboard de Scouting")
-st.title("📊 Dashboard Interactivo de Scouting")
+# --- Funciones de Visualización ---
+def plot_correlation_heatmap(df):
+    """Muestra la correlación entre las variables numéricas."""
+    fig, ax = plt.subplots(figsize=(12, 8))
+    numeric_cols = df.select_dtypes(include=np.number)
+    sns.heatmap(numeric_cols.corr(), annot=True, cmap='coolwarm', fmt=".2f", ax=ax)
+    ax.set_title('Mapa de Calor de Correlación de Variables Numéricas')
+    return fig
 
-# Cargar API key
-load_dotenv()
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+def plot_value_distribution(df):
+    """Muestra la distribución del valor de mercado."""
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.histplot(df['Market Value'] / 1_000_000, kde=True, ax=ax, bins=20)
+    ax.set_title('Distribución del Valor de Mercado (en Millones de EUR)')
+    ax.set_xlabel('Valor de Mercado (Millones de EUR)')
+    ax.set_ylabel('Número de Jugadores')
+    return fig
 
-# --- Función de Carga de Datos Cacheada ---
-# Se ejecuta solo cuando el archivo subido cambia, optimizando el rendimiento.
-@st.cache_data
-def load_data(uploaded_file):
-    df = pd.read_csv(uploaded_file)
-    df_featured = create_features(df)
-    return df_featured
+def plot_top_players(df, metric, title):
+    """Muestra un gráfico de barras de los 10 mejores jugadores por una métrica."""
+    top_10 = df.nlargest(10, metric)
+    fig, ax = plt.subplots(figsize=(12, 7))
+    sns.barplot(data=top_10, x=metric, y='Name', palette='viridis', ax=ax)
+    ax.set_title(title)
+    ax.set_xlabel(metric)
+    ax.set_ylabel('Jugador')
+    return fig
 
-# --- Sección para Subir el Archivo ---
-uploaded_file = st.file_uploader(
-    "Sube tu archivo CSV con estadísticas de jugadores para comenzar", 
-    type="csv"
-)
+def plot_efficiency_scatter(df):
+    """Gráfico de dispersión para analizar la eficiencia (Moneyball)."""
+    fig, ax = plt.subplots(figsize=(12, 8))
+    sns.scatterplot(
+        data=df[df['Performance'] > 0],
+        x='Performance',
+        y='Market Value',
+        hue='Age Group',
+        size='Cost_per_Performance',
+        sizes=(50, 1000),
+        alpha=0.7,
+        palette='magma',
+        ax=ax
+    )
+    ax.set_yscale('log')
+    ax.set_title('Análisis de Eficiencia: Valor vs. Rendimiento')
+    ax.set_xlabel('Rendimiento Total (Goles + Asistencias)')
+    ax.set_ylabel('Valor de Mercado (EUR) - Escala Logarítmica')
+    ax.legend(title='Grupo de Edad')
+    return fig
 
-# --- Lógica Principal de la Aplicación ---
-# Todo el dashboard se construye solo si un archivo ha sido subido.
-if uploaded_file is not None:
-    df = load_data(uploaded_file)
+# --- Función para el Resumen del Agente ---
+def get_dynamic_eda_summary(df):
+    """
+    Genera un informe de scouting detallado y estructurado para el agente de IA.
+    """
+    if df.empty:
+        return "No hay jugadores que coincidan con los filtros seleccionados."
 
-    # --- Sidebar de Filtros (se crea dinámicamente) ---
-    st.sidebar.header("Filtros Interactivos")
+    summary = f"**INFORME DE SCOUTING PARA {df.shape[0]} JUGADORES**\n\n"
+    summary += f"**Visión General:**\n"
+    summary += f"- **Edad Promedio:** {df['Age'].mean():.1f} años\n"
+    summary += f"- **Valor de Mercado Promedio:** {df['Market Value'].mean():,.0f} EUR\n"
+    if not df['Club'].empty:
+        summary += f"- **Club con más Jugadores:** {df['Club'].mode().iloc[0]}\n"
+    summary += "--- \n"
 
-    clubs = st.sidebar.multiselect("Club", options=sorted(df['Club'].unique()))
-    nationalities = st.sidebar.multiselect("Nacionalidad Principal", options=sorted(df['Primary Nationality'].unique()))
-    positions = st.sidebar.multiselect("Posición", options=sorted(df['Position'].unique()))
+    summary += "**Análisis por Posición:**\n"
+    
+    forwards = df[df['Position'].str.contains('Forward|Winger', na=False)]
+    if not forwards.empty:
+        avg_perf_fwd = forwards['Performance'].mean()
+        top_forward = forwards.loc[forwards['Performance'].idxmax()]
+        summary += f"- **Mejor Delantero:** {top_forward['Name']} ({top_forward['Club']}) con {top_forward['Performance']} contribuciones (Promedio: {avg_perf_fwd:.1f}).\n"
 
-    min_age, max_age = int(df['Age'].min()), int(df['Age'].max())
-    age_range = st.sidebar.slider("Rango de Edad", min_age, max_age, (min_age, max_age))
+    midfielders = df[df['Position'].str.contains('Midfield', na=False)]
+    if not midfielders.empty:
+        avg_perf_mid = midfielders['Performance'].mean()
+        top_midfielder = midfielders.loc[midfielders['Performance'].idxmax()]
+        summary += f"- **Mejor Mediocampista:** {top_midfielder['Name']} ({top_midfielder['Club']}) con {top_midfielder['Performance']} contribuciones (Promedio: {avg_perf_mid:.1f}).\n"
 
-    # Aplicar filtros al DataFrame
-    df_filtered = df.copy()
-    if clubs:
-        df_filtered = df_filtered[df_filtered['Club'].isin(clubs)]
-    if nationalities:
-        df_filtered = df_filtered[df_filtered['Primary Nationality'].isin(nationalities)]
-    if positions:
-        df_filtered = df_filtered[df_filtered['Position'].isin(positions)]
-    df_filtered = df_filtered[df_filtered['Age'].between(age_range[0], age_range[1])]
+    defenders = df[df['Position'].str.contains('Centre-Back|Full-Back', na=False)]
+    if not defenders.empty:
+        top_defender = defenders.loc[defenders['Market Value'].idxmax()]
+        summary += f"- **Mejor Defensor (por Valor):** {top_defender['Name']} ({top_defender['Club']}) valorado en {top_defender['Market Value']:,.0f} EUR.\n"
+    summary += "---\n"
 
-    st.markdown(f"Mostrando **{len(df_filtered)}** de **{len(df)}** jugadores según los filtros seleccionados.")
+    summary += "**Hallazgos Clave:**\n"
 
-    # --- Pestañas para organizar el contenido ---
-    tab1, tab2, tab3, tab4 = st.tabs(["🤖 Agente IA", "Visión General", "Análisis de Rendimiento", "Análisis Financiero"])
-
-    with tab1:
-        st.header("Asistente de Scouting con IA")
-        st.info("El agente analizará el conjunto de datos **filtrado actualmente** para darte recomendaciones específicas.")
+    performers = df[df['Cost_per_Performance'] > 0]
+    if not performers.empty:
+        most_efficient = performers.loc[performers['Cost_per_Performance'].idxmin()]
+        summary += f"- **Jugador más Eficiente (Moneyball):** {most_efficient['Name']} ({most_efficient['Club']}), costo de {most_efficient['Cost_per_Performance']:,.0f} EUR por contribución.\n"
+    
+    young_players = df[df['Age'] <= 21]
+    if not young_players.empty:
+        top_young_performer = young_players.loc[young_players['Performance'].idxmax()]
+        summary += f"- **Joven Promesa Destacada:** {top_young_performer['Name']} ({top_young_performer['Age']} años), el sub-21 con mejor rendimiento ({top_young_performer['Performance']} contribuciones).\n"
         
-        api_key_input = st.text_input("Introduce tu API Key de Groq", type="password", value=GROQ_API_KEY or "")
+    veteran_players = df[df['Age'] >= 30]
+    if not veteran_players.empty:
+        top_veteran_performer = veteran_players.loc[veteran_players['Performance'].idxmax()]
+        summary += f"- **Veterano de Impacto Inmediato:** {top_veteran_performer['Name']} ({top_veteran_performer['Age']} años), el mayor de 30 con mejor rendimiento ({top_veteran_performer['Performance']} contribuciones).\n"
         
-        if not api_key_input:
-            st.warning("Se necesita una API Key de Groq para usar el agente.")
-        else:
-            summary = get_dynamic_eda_summary(df_filtered)
-            st.markdown("#### Resumen para el Agente:")
-            with st.expander("Ver el resumen que recibirá la IA"):
-                st.text(summary)
-
-            user_question = st.text_area("Haz una pregunta específica sobre los jugadores seleccionados:", height=100)
-            
-            if st.button("Consultar al Agente"):
-                if user_question:
-                    with st.spinner("El Director Deportivo está analizando los datos..."):
-                        response = get_agent_response(api_key_input, summary, user_question)
-                        st.success(response)
-                else:
-                    st.warning("Por favor, introduce una pregunta.")
-
-    with tab2:
-        st.header("Visión General de los Datos Seleccionados")
-        st.dataframe(df_filtered)
-        st.header("Correlación de Métricas")
-        st.pyplot(plot_correlation_heatmap(df_filtered))
-
-    with tab3:
-        st.header("Análisis de Rendimiento")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.pyplot(plot_top_players(df_filtered, 'Goals', 'Top 10 Goleadores'))
-        with col2:
-            st.pyplot(plot_top_players(df_filtered, 'Assists', 'Top 10 Asistidores'))
-        st.pyplot(plot_top_players(df_filtered, 'Performance', 'Top 10 por Rendimiento Total'))
-
-    with tab4:
-        st.header("Análisis Financiero y de Eficiencia")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.pyplot(plot_value_distribution(df_filtered))
-        with col2:
-            st.pyplot(plot_top_players(df_filtered, 'Market Value', 'Top 10 Jugadores más Valiosos'))
-        st.header("Análisis de Eficiencia (Moneyball)")
-        st.pyplot(plot_efficiency_scatter(df_filtered))
-
-else:
-    st.info("Por favor, sube un archivo CSV para comenzar el análisis.")
+    df['Total Cards'] = df['Yellow Cards'] + df['Red Cards']
+    if not df.empty and df['Total Cards'].max() > 0:
+        riskiest_player = df.loc[df['Total Cards'].idxmax()]
+        summary += f"- **Riesgo Disciplinario:** {riskiest_player['Name']} es el jugador con más tarjetas ({riskiest_player['Total Cards']}).\n"
+        
+    return summary
